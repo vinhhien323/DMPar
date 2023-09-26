@@ -699,7 +699,7 @@ class BertPreTrainedModel(nn.Module):
             archive_file = pretrained_model_name_or_path
         # redirect to the cache, if necessary
         try:
-            resolved_archive_file = cached_path(archive_file, cache_dir=cache_dir)
+            resolved_archive_file = cached_path(archive_file)
         except EnvironmentError:
             logger.error(
                 "Model name '{}' was not found in model name list ({}). "
