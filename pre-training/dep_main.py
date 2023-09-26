@@ -159,12 +159,16 @@ def train(args):
     logger.info("Batch size = %d", args.train_batch_size)
 
     for epoch in range(int(args.num_train_epochs)):
-        files = ['wiki_%05d' % i for i in range(0, 2) if os.path.exists(os.path.join(args.train_data_path, 'wiki_%05d' % i))]
-        np.random.shuffle(files)
-        files = files[args.rank::args.world_size]
+        #files = ['wiki_%05d' % i for i in range(0, 2) if os.path.exists(os.path.join(args.train_data_path, 'wiki_%05d' % i))]
+        #print(args.train_data_path)
+        #np.random.shuffle(files)
+        #files = files[args.rank::args.world_size]
+        files = [args.train_data_path]
         logger.info('Epoch %d start' % (epoch+1))
         for file_index, file in enumerate(files):
-            train_examples = load_data(os.path.join(args.train_data_path, file))
+            print(file_index)
+            #train_examples = load_data(os.path.join(args.train_data_path, file))
+            train_examples = load_data(args.train_data_path)
             np.random.shuffle(train_examples)
             dep_parser.train()
             tr_loss = 0
@@ -326,7 +330,7 @@ def main():
     parser.add_argument("--continue_train", action='store_true')
 
     parser.add_argument("--vanilla", action='store_true')
-
+    ##################
     args = parser.parse_args()
 
     if 'WORLD_SIZE' in os.environ:

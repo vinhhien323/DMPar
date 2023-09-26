@@ -860,10 +860,19 @@ class BertModel(BertPreTrainedModel):
         extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
+        #print('Hien has changed the code on line 864 of bert.py')
+        #embedding_output = self.embeddings(input_ids, token_type_ids)
         embedding_output = self.embeddings(input_ids, token_type_ids)
+
         encoded_layers = self.encoder(embedding_output,
                                       extended_attention_mask,
                                       output_all_encoded_layers=output_all_encoded_layers, checkpoint_activations=checkpoint_activations)
+        
+        '''encoded_layers = self.encoder(self.embeddings(input_ids),
+                                      extended_attention_mask,
+                                      output_all_encoded_layers=output_all_encoded_layers, checkpoint_activations=checkpoint_activations)'''
+        ###Editing has stopped here
+        
         sequence_output = encoded_layers[-1]
         pooled_output = self.pooler(sequence_output)
         if not output_all_encoded_layers:

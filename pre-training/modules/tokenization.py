@@ -69,17 +69,26 @@ def convert_to_unicode(text):
 
 
 def load_vocab(vocab_file):
+    vocab_file = '/content/drive/MyDrive/NLP/DMPar/new_vocab.txt'
+    print('vocab.txt directory: ',vocab_file)
     """Loads a vocabulary file into a dictionary."""
     vocab = collections.OrderedDict()
     index = 0
     with open(vocab_file, "r", encoding="utf-8") as reader:
         while True:
             token = reader.readline()
+            '''raw = token
+            token = token.split()
+            if len(token) >= 1:
+              token = token[0]
+            else:
+              break'''
             if not token:
                 break
             token = token.strip()
             vocab[token] = index
             index += 1
+    #print(vocab)
     return vocab
 
 
@@ -120,7 +129,10 @@ class BertTokenizer(object):
         """Converts a sequence of tokens into ids using the vocab."""
         ids = []
         for token in tokens:
-            ids.append(self.vocab[token])
+            try: 
+              ids.append(self.vocab[token])
+            except:
+              print('Error',token)
         if len(ids) > self.max_len:
             raise ValueError(
                 "Token indices sequence length is longer than the specified maximum "

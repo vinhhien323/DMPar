@@ -6,7 +6,7 @@ import math
 import numpy as np
 import torch
 from torch import nn
-from modules import BertModel, BertTokenizer, Biaffine, MLP
+from modules import Biaffine, MLP, BertModel, BertTokenizer
 from transformers_xlnet import XLNetModel, XLNetTokenizer
 from util import eisner, ispunct
 import re
@@ -84,6 +84,8 @@ class DependencyParser(nn.Module):
                 ):
 
         if self.bert is not None:
+          #token_type_ids
+            print('\n\n\n Debug on line 87 of dep_main.py,',token_type_ids)
             sequence_output, _ = self.bert(input_ids, token_type_ids, attention_mask, output_all_encoded_layers=False)
         elif self.transformer is not None:
             transformer_outputs = self.transformer(input_ids, token_type_ids, attention_mask=attention_mask)
