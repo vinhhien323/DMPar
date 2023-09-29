@@ -79,10 +79,10 @@ def train(args):
     label_list = get_label_list(args.label_path)
     logger.info('# of tag types in train: %d: ' % (len(label_list) - 3))
     label_map = {label: i for i, label in enumerate(label_list, 1)}
-
     hpara = DependencyParser.init_hyper_parameters(args)
-    dep_parser = DependencyParser(label_map, hpara, args.bert_model, from_pretrained=(not args.vanilla))
-
+    print('Test:',label_map)
+    dep_parser = DependencyParser(label_map, hpara, args.bert_model, from_pretrained=True)
+    print('Done')
     load_data = dep_parser.load_data
     convert_examples_to_features = dep_parser.convert_examples_to_features
     feature2input = dep_parser.feature2input

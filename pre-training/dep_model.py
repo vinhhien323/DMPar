@@ -6,7 +6,10 @@ import math
 import numpy as np
 import torch
 from torch import nn
-from modules import Biaffine, MLP, BertModel, BertTokenizer
+from modules import Biaffine, MLP
+from transformers import AutoModel as BertModel
+from transformers import AutoTokenizer as BertTokenizer
+from transformers import AutoConfig as BertConfig
 from transformers_xlnet import XLNetModel, XLNetTokenizer
 from util import eisner, ispunct
 import re
@@ -33,44 +36,11 @@ class DependencyParser(nn.Module):
         self.max_seq_length = self.hpara['max_seq_length']
         self.arc_criterion = nn.CrossEntropyLoss(ignore_index=-1)
         self.rel_criterion = nn.CrossEntropyLoss(ignore_index=0)
-
-        self.tokenizer = None
-        self.bert = None
+        self.tokenizer = BertTokenizer.from_pretrained(model_path)
+        self.bert = BertModel.from_pretrained(model_path)
+        hidden_size = self.bert.config.hidden_size
+        self.dropout = nn.Dropout(self.bert.config.hidden_dropout_prob)
         self.transformer = None
-
-        if self.hpara['use_bert']:
-            self.tokenizer = BertTokenizer.from_pretrained(model_path, do_lower_case=self.hpara['do_lower_case'])
-            if from_pretrained:
-                self.bert = BertModel.from_pretrained(model_path, cache_dir='')
-            else:
-                from modules import CONFIG_NAME, BertConfig
-                config_file = os.path.join(model_path, CONFIG_NAME)
-                config = BertConfig.from_json_file(config_file)
-                self.bert = BertModel(config)
-            hidden_size = self.bert.config.hidden_size
-            self.dropout = nn.Dropout(self.bert.config.hidden_dropout_prob)
-        elif self.hpara['use_xlnet']:
-            self.tokenizer = XLNetTokenizer.from_pretrained(model_path, do_lower_case=self.hpara['do_lower_case'])
-            if from_pretrained:
-                self.transformer = XLNetModel.from_pretrained(model_path)
-                state_dict = torch.load(os.path.join(model_path, 'pytorch_model.bin'))
-                key_list = list(state_dict.keys())
-                reload = False
-                for key in key_list:
-                    if key.find('xlnet.') > -1:
-                        reload = True
-                        state_dict[key[key.find('xlnet.') + len('xlnet.'):]] = state_dict[key]
-                    state_dict.pop(key)
-                if reload:
-                    self.xlnet.load_state_dict(state_dict)
-            else:
-                config, model_kwargs = XLNetModel.config_class.from_pretrained(model_path, return_unused_kwargs=True)
-                self.transformer = XLNetModel(config)
-            hidden_size = self.transformer.config.hidden_size
-            self.dropout = nn.Dropout(self.transformer.config.summary_last_dropout)
-        else:
-            raise ValueError()
-
         self.linear_arc = nn.Linear(hidden_size, hidden_size, bias=False)
         self.rel_classifier_1 = nn.Linear(hidden_size, self.num_labels, bias=False)
         self.rel_classifier_2 = nn.Linear(hidden_size, self.num_labels, bias=False)
@@ -83,16 +53,12 @@ class DependencyParser(nn.Module):
                 arcs=None, rels=None,
                 ):
 
-        if self.bert is not None:
-          #token_type_ids
-            print('\n\n\n Debug on line 87 of dep_model.py,',token_type_ids)
-            sequence_output, _ = self.bert(input_ids, token_type_ids, attention_mask, output_all_encoded_layers=False)
-        elif self.transformer is not None:
-            transformer_outputs = self.transformer(input_ids, token_type_ids, attention_mask=attention_mask)
-            sequence_output = transformer_outputs[0]
-        else:
-            raise ValueError()
-
+        outputs = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+        )
+        sequence_output = outputs[0]
         batch_size, _, feat_dim = sequence_output.shape
         max_len = attention_mask_label.shape[1]
         valid_output = torch.zeros(batch_size, max_len, feat_dim, dtype=sequence_output.dtype, device=input_ids.device)
@@ -174,6 +140,7 @@ class DependencyParser(nn.Module):
         command = 'cp ' + str(output_config_file) + ' ' + str(output_bert_config_file)
         subprocess.run(command, shell=True)
 
+        '''
         if self.bert:
             vocab_name = 'vocab.txt'
         elif self.transformer:
@@ -183,6 +150,7 @@ class DependencyParser(nn.Module):
         vocab_path = os.path.join(vocab_dir, vocab_name)
         command = 'cp ' + str(vocab_path) + ' ' + str(os.path.join(output_dir, vocab_name))
         subprocess.run(command, shell=True)
+        '''
 
         if optimizer is not None:
             output_model_path = os.path.join(output_dir, 'optimizer.bin')
