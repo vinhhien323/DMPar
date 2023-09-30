@@ -6,7 +6,10 @@ import math
 import numpy as np
 import torch
 from torch import nn
-from modules import BertModel, ZenModel, BertTokenizer, Biaffine, MLP, LayerNormalization, PositionalEncoding
+from modules import ZenModel, Biaffine, MLP, LayerNormalization, PositionalEncoding
+from transformers import AutoTokenizer as BertTokenizer
+from transformers import AutoModel as BertModel
+from transformers import AutoConfig as BertConfig
 from transformers_xlnet import XLNetModel, XLNetTokenizer
 from util import eisner, ZenNgramDict, ispunct
 from dep_helper import save_json, load_json
@@ -55,19 +58,14 @@ class DependencyParser(nn.Module):
         self.xlnet = None
         self.zen = None
         self.zen_ngram_dict = None
-
-        if self.hpara['use_bert']:
-            self.tokenizer = BertTokenizer.from_pretrained(model_path, do_lower_case=self.hpara['do_lower_case'])
-            if from_pretrained:
-                self.bert = BertModel.from_pretrained(model_path, cache_dir='')
-            else:
-                from modules import CONFIG_NAME, BertConfig
-                config_file = os.path.join(model_path, CONFIG_NAME)
-                config = BertConfig.from_json_file(config_file)
-                self.bert = BertModel(config)
-            hidden_size = self.bert.config.hidden_size
-            self.dropout = nn.Dropout(self.bert.config.hidden_dropout_prob)
-        elif self.hpara['use_xlnet']:
+        self.tokenizer = BertTokenizer.from_pretrained(model_path)
+        #from modules import CONFIG_NAME
+        #config_file = os.path.join(model_path, CONFIG_NAME)
+        #config = BertConfig.from_pretrained(model_path)
+        self.bert = BertModel.from_pretrained(model_path)
+        hidden_size = self.bert.config.hidden_size
+        self.dropout = nn.Dropout(self.bert.config.hidden_dropout_prob)
+        if self.hpara['use_xlnet']:
             self.tokenizer = XLNetTokenizer.from_pretrained(model_path, do_lower_case=self.hpara['do_lower_case'])
             if from_pretrained:
                 self.xlnet = XLNetModel.from_pretrained(model_path)
@@ -93,8 +91,6 @@ class DependencyParser(nn.Module):
             self.zen = ZenModel.from_pretrained(model_path, cache_dir='')
             hidden_size = self.zen.config.hidden_size
             self.dropout = nn.Dropout(self.zen.config.hidden_dropout_prob)
-        else:
-            raise ValueError()
 
         if self.use_pos:
             self.pos2id = pos2id
@@ -162,7 +158,8 @@ class DependencyParser(nn.Module):
                 ):
 
         if self.bert is not None:
-            sequence_output, _ = self.bert(input_ids, token_type_ids, attention_mask, output_all_encoded_layers=False)
+          outputs = self.bert(input_ids,attention_mask=attention_mask,token_type_ids=token_type_ids,)
+          sequence_output = outputs[0]
         elif self.xlnet is not None:
             transformer_outputs = self.xlnet(input_ids, token_type_ids, attention_mask=attention_mask)
             sequence_output = transformer_outputs[0]
