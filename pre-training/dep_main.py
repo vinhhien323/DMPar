@@ -159,16 +159,12 @@ def train(args):
     logger.info("Batch size = %d", args.train_batch_size)
 
     for epoch in range(int(args.num_train_epochs)):
-        #files = ['wiki_%05d' % i for i in range(0, 2) if os.path.exists(os.path.join(args.train_data_path, 'wiki_%05d' % i))]
-        #print(args.train_data_path)
-        #np.random.shuffle(files)
-        #files = files[args.rank::args.world_size]
-        files = [args.train_data_path]
+        #directory: args.train_data_path, store at 'files' list
+        files =  [f for f in os.listdir(args.train_data_path) if os.path.isfile(args.train_data_path+'/'+f)]
         logger.info('Epoch %d start' % (epoch+1))
         for file_index, file in enumerate(files):
-            print(file_index)
-            #train_examples = load_data(os.path.join(args.train_data_path, file))
-            train_examples = load_data(args.train_data_path)
+            logger.info(str(str(file_index)+' - '+file))
+            train_examples = load_data(os.path.join(args.train_data_path, file))
             np.random.shuffle(train_examples)
             dep_parser.train()
             tr_loss = 0
