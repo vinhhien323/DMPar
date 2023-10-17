@@ -163,6 +163,10 @@ class DependencyParser(nn.Module):
 
         return examples
 
+    def to_example(self, lines):
+      examples = self.process_data(lines)
+      return examples
+
     @staticmethod
     def process_data(lines):
 
@@ -413,7 +417,9 @@ def readfile(filename):
     with open(filename, 'r', encoding='utf8') as f:
         lines = f.readlines()
         bad_sent = False
+        cnt = 0
         for line in lines:
+            cnt += 1
             line = line.strip()
             if line == '' or re.match('\\s+', line):
                 if not (len(sentence) == len(head) and len(head) == len(label)):
@@ -430,7 +436,7 @@ def readfile(filename):
                 bad_sent = True
                 continue
             sentence.append(splits[1])
-            head.append(int(splits[6]))
+            head.append(splits[6])
             label.append(splits[7])
         data.append((sentence, head, label))
     return data

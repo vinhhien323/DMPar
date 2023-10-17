@@ -18,6 +18,64 @@ from dep_helper import get_label_list
 from dep_model import DependencyParser
 import datetime
 
+import pandas as pd
+
+'''
+def Get_data(chunk_data, max_seq = 38400):
+  train_examples = []
+  sentence = []
+  head = []
+  label = []
+  cnt = 0
+  while len(train_examples) < max_seq:
+    cnt += 1
+    try:
+      frame = chunk_data.get_chunk()
+    except:
+      if len(sentence) > 0:
+        train_examples.append((sentence,head,label))
+        sentence = []
+        head = []
+        label = []
+      print('Stopped at', cnt)
+      print(frame)
+      break
+    if frame.isnull().values.any():
+      if len(sentence) > 0:
+        train_examples.append((sentence,head,label))
+        sentence = []
+        head = []
+        label = []
+    else:
+      sentence.append(frame[1].values[0])
+      head.append(frame[6].values[0])
+      label.append(frame[7].values[0])
+  print("HIEN:",len(train_examples))
+  return train_examples
+'''
+
+def Get_data(chunk_data, max_seq = 38400):
+  train_examples = []
+  sentence = []
+  head = []
+  label = []
+  for frame in chunk_data:
+    if frame.isnull().values.any():
+      if len(sentence) > 0:
+        train_examples.append((sentence,head,label))
+        sentence = []
+        head = []
+        label = []
+    else:
+      sentence.append(str(frame[1].values[0]))
+      head.append(frame[6].values[0])
+      label.append(frame[7].values[0])
+    if len(train_examples) == max_seq:
+      break
+  if len(sentence) > 0:
+    train_examples.append((sentence,head,label))
+  return train_examples
+
 
 def train(args):
 
@@ -164,73 +222,94 @@ def train(args):
         logger.info('Epoch %d start' % (epoch+1))
         for file_index, file in enumerate(files):
             logger.info(str(str(file_index)+' - '+file))
-            train_examples = load_data(os.path.join(args.train_data_path, file))
-            np.random.shuffle(train_examples)
-            dep_parser.train()
-            tr_loss = 0
-            nb_tr_examples, nb_tr_steps = 0, 0
-            with tqdm(total=int(len(train_examples) / args.train_batch_size),
-                      disable=(args.rank not in [-1, 0] and args.world_size > 1)) as pbar:
-                for step, start_index in enumerate(range(0, len(train_examples), args.train_batch_size)):
-                    dep_parser.train()
-                    batch_examples = train_examples[start_index: min(start_index +
-                                                                     args.train_batch_size, len(train_examples))]
-                    if len(batch_examples) == 0:
-                        continue
-                    train_features = convert_examples_to_features(batch_examples)
+            chunk_data = pd.read_csv(os.path.join(args.train_data_path, file),
+                             skip_blank_lines=False,
+                             iterator=True,
+                             chunksize=1,
+                             delimiter="\t",
+                             header=None,
+                             encoding='utf-8',
+                             error_bad_lines=False,
+                             engine='python',
+                             quoting=csv.QUOTE_NONE)
+            part_cnt = 0
+            while True:
+              train_examples = Get_data(chunk_data,max_seq = 10**100)
+              if len(train_examples) == 0:
+                break
+              train_examples = dep_parser.to_example(train_examples)
+              #train_examples = load_data(os.path.join(args.train_data_path, file))
+              #print(len(train_examples),len(train_examples_original))
+              #print(train_examples_original.shape)
+              #print(train_examples.shape)
+              part_cnt += 1
+              logger.info('Part '+str(part_cnt))
+              np.random.shuffle(train_examples)
+              dep_parser.train()
+              tr_loss = 0
+              nb_tr_examples, nb_tr_steps = 0, 0
+              with tqdm(total=int(len(train_examples) / args.train_batch_size),
+                        disable=(args.rank not in [-1, 0] and args.world_size > 1)) as pbar:
+                  for step, start_index in enumerate(range(0, len(train_examples), args.train_batch_size)):
+                      dep_parser.train()
+                      batch_examples = train_examples[start_index: min(start_index +
+                                                                      args.train_batch_size, len(train_examples))]
+                      if len(batch_examples) == 0:
+                          continue
+                      train_features = convert_examples_to_features(batch_examples)
 
-                    if len(train_features) == 0:
-                        continue
+                      if len(train_features) == 0:
+                          continue
 
-                    input_ids, input_mask, l_mask, eval_mask, arcs, rels, ngram_ids, ngram_positions, \
-                    segment_ids, valid_ids = feature2input(device, train_features)
+                      input_ids, input_mask, l_mask, eval_mask, arcs, rels, ngram_ids, ngram_positions, \
+                      segment_ids, valid_ids = feature2input(device, train_features)
 
-                    loss = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask,
-                                      ngram_ids, ngram_positions,
-                                      arcs, rels)
+                      loss = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask,
+                                        ngram_ids, ngram_positions,
+                                        arcs, rels)
 
-                    # if np.isnan(loss.to('cpu').detach().numpy()):
-                    #     raise ValueError('loss is nan!')
-                    if n_gpu > 1:
-                        loss = loss.mean()  # mean() to average on multi-gpu.
-                    if args.gradient_accumulation_steps > 1:
-                        loss = loss / args.gradient_accumulation_steps
+                      # if np.isnan(loss.to('cpu').detach().numpy()):
+                      #     raise ValueError('loss is nan!')
+                      if n_gpu > 1:
+                          loss = loss.mean()  # mean() to average on multi-gpu.
+                      if args.gradient_accumulation_steps > 1:
+                          loss = loss / args.gradient_accumulation_steps
 
-                    if args.fp16:
-                        with amp.scale_loss(loss, optimizer) as scaled_loss:
-                            scaled_loss.backward()
-                    else:
-                        loss.backward()
+                      if args.fp16:
+                          with amp.scale_loss(loss, optimizer) as scaled_loss:
+                              scaled_loss.backward()
+                      else:
+                          loss.backward()
 
-                    tr_loss += loss.item()
-                    nb_tr_examples += input_ids.size(0)
-                    nb_tr_steps += 1
+                      tr_loss += loss.item()
+                      nb_tr_examples += input_ids.size(0)
+                      nb_tr_steps += 1
 
-                    pbar.update(1)
+                      pbar.update(1)
 
-                    if (step + 1) % args.gradient_accumulation_steps == 0:
-                        if args.fp16:
-                            # modify learning rate with special warm up for BERT which FusedAdam doesn't do
-                            scheduler.step()
-                        optimizer.step()
-                        optimizer.zero_grad()
-                        global_step += 1
+                      if (step + 1) % args.gradient_accumulation_steps == 0:
+                          if args.fp16:
+                              # modify learning rate with special warm up for BERT which FusedAdam doesn't do
+                              scheduler.step()
+                          optimizer.step()
+                          optimizer.zero_grad()
+                          global_step += 1
 
-                        if global_step % args.save_every_steps == 0 \
-                                and (args.local_rank == -1
-                                     or torch.distributed.get_rank() == 0
-                                     or args.world_size <= 1):
-                            current_step = global_step * args.world_size
+                          if global_step % args.save_every_steps == 0 \
+                                  and (args.local_rank == -1
+                                      or torch.distributed.get_rank() == 0
+                                      or args.world_size <= 1):
+                              current_step = global_step * args.world_size
 
-                            if not os.path.exists(output_model_dir):
-                                os.makedirs(output_model_dir)
+                              if not os.path.exists(output_model_dir):
+                                  os.makedirs(output_model_dir)
 
-                            # model_to_save = dep_parser.module if hasattr(dep_parser, 'module') else dep_parser
-                            step_model_dir = os.path.join(output_model_dir, 'step_%08d' % current_step)
-                            if not os.path.exists(step_model_dir):
-                                os.mkdir(step_model_dir)
+                              # model_to_save = dep_parser.module if hasattr(dep_parser, 'module') else dep_parser
+                              step_model_dir = os.path.join(output_model_dir, 'step_%08d' % current_step)
+                              if not os.path.exists(step_model_dir):
+                                  os.mkdir(step_model_dir)
 
-                            save_model(step_model_dir, args.bert_model, optimizer)
+                              save_model(step_model_dir, args.bert_model, optimizer)
 
 
 def main():
