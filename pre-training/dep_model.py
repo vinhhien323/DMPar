@@ -436,7 +436,7 @@ def readfile(filename):
                 bad_sent = True
                 continue
             sentence.append(splits[1])
-            head.append(splits[6])
+            head.append(int(splits[6]))
             label.append(splits[7])
         data.append((sentence, head, label))
     return data
