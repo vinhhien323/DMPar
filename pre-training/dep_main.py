@@ -234,11 +234,11 @@ def train(args):
                              quoting=csv.QUOTE_NONE)
             part_cnt = 0
             while True:
-              train_examples = Get_data(chunk_data,max_seq = 10**100)
-              if len(train_examples) == 0:
-                break
-              train_examples = dep_parser.to_example(train_examples)
-              #train_examples = load_data(os.path.join(args.train_data_path, file))
+              #train_examples = Get_data(chunk_data,max_seq = 10**100)
+              #if len(train_examples) == 0:
+              #  break
+              #train_examples = dep_parser.to_example(train_examples)
+              train_examples = load_data(os.path.join(args.train_data_path, file))
               #print(len(train_examples),len(train_examples_original))
               #print(train_examples_original.shape)
               #print(train_examples.shape)
