@@ -265,20 +265,29 @@ class MyDataset(IterableDataset):
                               header=None,
                               encoding='utf-8',
                               quoting=csv.QUOTE_NONE)
-      sentences = np.array([],np.string_)
-      heads = np.array([],np.int32)
-      labels = np.array([],np.int32)
+      # sentences = np.array([],np.string_)
+      # heads = np.array([],np.int32)
+      # labels = np.array([],np.int32)
+      sentences = []
+      heads = []
+      labels = []
       first_chunk = chunk_data.get_chunk()
       chunk = pd.DataFrame(first_chunk)
-      sentences = np.append(sentences,str(chunk.values[0,0]))
-      heads = np.append(heads,chunk.values[0,1])
-      labels = np.append(labels,chunk.values[0,2])
+      # sentences = np.append(sentences,str(chunk.values[0,0]))
+      # heads = np.append(heads,chunk.values[0,1])
+      # labels = np.append(labels,chunk.values[0,2])
+      sentences.append(chunk.values[0,0])
+      heads.append(int(chunk.values[0,1]))
+      labels.append(chunk.values[0,2])
       for l in chunk_data:
           #if not np.isnan(l.iloc[0,0]):
           if not pd.isnull(l.iloc[0,0]):
-              sentences = np.append(sentences, str(l.values[0, 0]))
-              heads = np.append(heads, l.values[0, 1])
-              labels = np.append(labels, l.values[0, 2])
+              # sentences = np.append(sentences, str(l.values[0, 0]))
+              # heads = np.append(heads, l.values[0, 1])
+              # labels = np.append(labels, l.values[0, 2])
+              sentences.append(l.values[0, 0])
+              heads.append(int(l.values[0, 1]))
+              labels.append(l.values[0, 2])
               continue
           splitted_data = (sentences,heads,labels)
           processed_data = self.process_data(lines = [splitted_data])
@@ -286,14 +295,20 @@ class MyDataset(IterableDataset):
           yield example[0]
           first_chunk = next(chunk_data)
           chunk = pd.DataFrame(first_chunk)
-          sentences = np.array([], np.string_)
-          heads = np.array([], np.int32)
-          labels = np.array([], np.int32)
+          # sentences = np.array([], np.string_)
+          # heads = np.array([], np.int32)
+          # labels = np.array([], np.int32)
+          sentences = []
+          heads = []
+          labels = []
           first_chunk = chunk_data.get_chunk()
           chunk = pd.DataFrame(first_chunk)
-          sentences = np.append(sentences, str(chunk.values[0, 0]))
-          heads = np.append(heads, chunk.values[0, 1])
-          labels = np.append(labels, chunk.values[0, 2])
+          # sentences = np.append(sentences, str(chunk.values[0, 0]))
+          # heads = np.append(heads, chunk.values[0, 1])
+          # labels = np.append(labels, chunk.values[0, 2])
+          sentences.append(chunk.values[0, 0])
+          heads.append(int(chunk.values[0, 1]))
+          labels.append(chunk.values[0, 2])
           continue
       splitted_data = (sentences,heads,labels)
       processed_data = self.process_data(lines = [splitted_data])
