@@ -61,8 +61,85 @@ class MyDataset(IterableDataset):
                                          label=label))
         return examples
 
+    def custom_convert_examples_to_features(self, text_list, label_list, head_list):
+        tokens = []
+        head_idx = []
+        labels = []
+        valid = []
+        label_mask = []
 
-  def convert_examples_to_features(self, examples):
+        punctuation_idx = []
+
+        if len(text_list) > self.max_seq_length - 2:
+            text_list = text_list[:self.max_seq_length - 2]
+            label_list = label_list[:self.max_seq_length - 2]
+            head_list = head_list[:self.max_seq_length - 2]
+
+        for i, word in enumerate(text_list):
+            if ispunct(word):
+                punctuation_idx.append(i + 1)
+            token = self.tokenizer.tokenize(word)
+            tokens.extend(token)
+            for m in range(len(token)):
+                if m == 0:
+                    valid.append(1)
+                    head_idx.append(head_list[i])
+                    labels.append(label_list[i])
+                    label_mask.append(1)
+                else:
+                    valid.append(0)
+
+
+        ntokens = []
+        segment_ids = []
+        label_ids = []
+        head_idx = []
+
+        ntokens.append(self.tokenizer.cls_token)
+        segment_ids.append(0)
+
+        valid.insert(0, 1)
+        label_mask.insert(0, 1)
+        head_idx.append(-1)
+        label_ids.append(self.label_map[self.tokenizer.cls_token])
+        for i, token in enumerate(tokens):
+            ntokens.append(token)
+            segment_ids.append(0)
+        for i in range(len(labels)):
+            if labels[i] in self.label_map:
+                label_ids.append(self.label_map[labels[i]])
+            else:
+                label_ids.append(self.label_map[self.tokenizer.unk_token])
+            head_idx.append(head_idx[i])
+        ntokens.append(self.tokenizer.sep_token)
+
+        segment_ids.append(0)
+        valid.append(1)
+
+        input_ids = self.tokenizer.convert_tokens_to_ids(ntokens)
+        input_mask = [1] * len(input_ids)
+
+        eval_mask = copy.deepcopy(label_mask)
+        eval_mask[0] = 0
+        # ignore all punctuation if not specified
+        for idx in punctuation_idx:
+            if idx < len(eval_mask):
+                eval_mask[idx] = 0
+
+
+        input_ids = torch.tensor(input_ids, dtype=torch.long)
+        input_mask = torch.tensor(input_mask, dtype=torch.long)
+        segment_ids = torch.tensor(segment_ids, dtype=torch.long)
+        head_idx = torch.tensor(head_idx, dtype=torch.long)
+        label_ids = torch.tensor(label_ids, dtype=torch.long)
+        valid_ids = torch.tensor(valid, dtype=torch.long)
+        lmask_ids = torch.tensor(label_mask, dtype=torch.bool)
+        eval_mask_ids = torch.tensor(eval_mask, dtype=torch.bool)
+
+
+        return [input_ids, input_mask, segment_ids, head_idx, label_ids, valid_ids, lmask_ids, eval_mask_ids]
+
+    def convert_examples_to_features(self, examples):
 
           max_seq_length = self.max_seq_length
           labelmap = self.label_map
@@ -176,6 +253,15 @@ class MyDataset(IterableDataset):
                   if idx < label_pad_length:
                       eval_mask[idx] = 0
 
+              input_ids = torch.tensor(input_ids, dtype=torch.long)
+              input_mask = torch.tensor(input_mask, dtype=torch.long)
+              segment_ids = torch.tensor(segment_ids, dtype=torch.long)
+              head_idx = torch.tensor(head_idx, dtype=torch.long)
+              label_ids = torch.tensor(label_ids, dtype=torch.long)
+              valid_ids = torch.tensor(valid, dtype=torch.long)
+              lmask_ids = torch.tensor(label_mask, dtype=torch.bool)
+              eval_mask_ids = torch.tensor(eval_mask, dtype=torch.bool)
+              features.append([input_ids,input_mask,segment_ids,head_idx,label_ids,valid_ids,lmask_ids,eval_mask_ids])
 
               # assert len(input_ids) == seq_pad_length
               # assert len(input_mask) == seq_pad_length
@@ -289,10 +375,10 @@ class MyDataset(IterableDataset):
               heads.append(int(l.values[0, 1]))
               labels.append(l.values[0, 2])
               continue
-          splitted_data = (sentences,heads,labels)
-          processed_data = self.process_data(lines = [splitted_data])
-          example = self.convert_examples_to_features(examples = processed_data)
-          yield example[0]
+          #splitted_data = (sentences,heads,labels)
+          #processed_data = self.process_data(lines = [splitted_data])
+          example = self.custom_convert_examples_to_features(text_list= sentences, label_list=labels, head_list= heads)
+          yield example
           first_chunk = next(chunk_data)
           chunk = pd.DataFrame(first_chunk)
           # sentences = np.array([], np.string_)
@@ -308,10 +394,12 @@ class MyDataset(IterableDataset):
           heads.append(int(chunk.values[0, 1]))
           labels.append(chunk.values[0, 2])
           continue
-      splitted_data = (sentences,heads,labels)
-      processed_data = self.process_data(lines = [splitted_data])
-      example = self.convert_examples_to_features(examples = processed_data)
-      yield example[0]
+      #splitted_data = (sentences,heads,labels)
+      #processed_data = self.process_data(lines = [splitted_data])
+      #example = self.convert_examples_to_features(examples = processed_data)
+      #yield example[0]
+      example = self.custom_convert_examples_to_features(text_list=sentences, label_list=labels, head_list=heads)
+      yield example
 
   def __init__(self, file_path, tokenizer, label_path, max_seq_length = 256):
     super(IterableDataset).__init__()
