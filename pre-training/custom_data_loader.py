@@ -277,7 +277,7 @@ class MyDataset(IterableDataset):
       # heads = np.append(heads,chunk.values[0,1])
       # labels = np.append(labels,chunk.values[0,2])
       sentences.append(str(chunk.values[0,0]))
-      heads.append(chunk.values[0,1])
+      heads.append(int(chunk.values[0,1]))
       labels.append(chunk.values[0,2])
       for l in chunk_data:
           #if not np.isnan(l.iloc[0,0]):
@@ -286,7 +286,7 @@ class MyDataset(IterableDataset):
               # heads = np.append(heads, l.values[0, 1])
               # labels = np.append(labels, l.values[0, 2])
               sentences.append(str(l.values[0, 0]))
-              heads.append(l.values[0, 1])
+              heads.append(int(l.values[0, 1]))
               labels.append(l.values[0, 2])
               continue
           splitted_data = (sentences,heads,labels)
@@ -307,7 +307,7 @@ class MyDataset(IterableDataset):
           # heads = np.append(heads, chunk.values[0, 1])
           # labels = np.append(labels, chunk.values[0, 2])
           sentences.append(str(chunk.values[0, 0]))
-          heads.append(chunk.values[0, 1])
+          heads.append(int(chunk.values[0, 1]))
           labels.append(chunk.values[0, 2])
           continue
       splitted_data = (sentences,heads,labels)
