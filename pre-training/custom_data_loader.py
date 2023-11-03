@@ -301,8 +301,6 @@ class MyDataset(IterableDataset):
           sentences = []
           heads = []
           labels = []
-          first_chunk = chunk_data.get_chunk()
-          chunk = pd.DataFrame(first_chunk)
           # sentences = np.append(sentences, str(chunk.values[0, 0]))
           # heads = np.append(heads, chunk.values[0, 1])
           # labels = np.append(labels, chunk.values[0, 2])
