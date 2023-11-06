@@ -431,6 +431,8 @@ def custom_collate(data, tokenizer, device = None):
           #add = torch.full([need],add_token[col])
           #item[col] = torch.cat((item[col],add))
 
+    np.random.shuffle(data)
+
     all_input_ids = torch.stack([item[0] for item in data])
     all_input_mask = torch.stack([item[1] for item in data])
     all_segment_ids = torch.stack([item[2] for item in data])

@@ -204,23 +204,21 @@ def train(args):
     for epoch in range(int(args.num_train_epochs)):
         #directory: args.train_data_path, store at 'files' list
         files =  [f for f in os.listdir(args.train_data_path) if os.path.isfile(args.train_data_path+'/'+f)]
+        np.random.shuffle(files)
         logger.info('Epoch %d start' % (epoch+1))
         for file_index, file in enumerate(files):
             time_start = time.time()
             dataset = MyDataset(file_path=os.path.join(args.train_data_path, file),tokenizer=tokenizer,label_path=args.label_path)
             loader = DataLoader(dataset,batch_size = 16, collate_fn=partial(custom_collate, tokenizer = tokenizer, device = device))
+            dep_parser.train()
+            tr_loss = 0
+            nb_tr_examples, nb_tr_steps = 0, 0
             for train_examples in loader:
-                dep_parser.train()
-                tr_loss = 0
-                nb_tr_examples, nb_tr_steps = 0, 0
                 dep_parser.train()
 
                 input_ids, input_mask, l_mask, eval_mask, arcs, rels, ngram_ids, ngram_positions, \
                 segment_ids, valid_ids = train_examples
 
-
-
-                loss = dep_parser()
                 loss = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask,
                                     ngram_ids, ngram_positions,
                                     arcs, rels)
