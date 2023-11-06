@@ -213,7 +213,7 @@ def train(args):
             dep_parser.train()
             tr_loss = 0
             nb_tr_examples, nb_tr_steps = 0, 0
-            for train_examples in loader:
+            for step, train_examples in enumerate(loader):
                 dep_parser.train()
 
                 input_ids, input_mask, l_mask, eval_mask, arcs, rels, ngram_ids, ngram_positions, \
