@@ -51,8 +51,8 @@ def ispunct(token):
 class MyDataset(IterableDataset):
 
 
-  @staticmethod
-  def process_data(lines):
+    @staticmethod
+    def process_data(lines):
 
         examples = []
         for i, (sentence, head, label) in enumerate(lines):
@@ -310,7 +310,7 @@ class MyDataset(IterableDataset):
           return features
 
 
-  def get_label_list(self, tokenizer, label_path):
+    def get_label_list(self, tokenizer, label_path):
       label_list = [tokenizer.unk_token]
 
       with open(label_path, 'r', encoding='utf8') as f:
@@ -329,19 +329,19 @@ class MyDataset(IterableDataset):
 
 
 
-  def Get_data(self, df):
-    sentence = []
-    head = []
-    label = []
-    for i in range(len(df)):
-      sentence.append(str(df.values[i,0]))
-      head.append(int(df.values[i,1]))
-      label.append(df.values[i,2])
-    return (sentence,head,label)
+    def Get_data(self, df):
+        sentence = []
+        head = []
+        label = []
+        for i in range(len(df)):
+          sentence.append(str(df.values[i,0]))
+          head.append(int(df.values[i,1]))
+          label.append(df.values[i,2])
+        return (sentence,head,label)
 
 
 
-  def iter_chunk(self,file_path):
+    def iter_chunk(self,file_path):
       # create iterator by sentences
       chunk_data = pd.read_csv(file_path,
                               skip_blank_lines=False,
@@ -351,26 +351,17 @@ class MyDataset(IterableDataset):
                               header=None,
                               encoding='utf-8',
                               quoting=csv.QUOTE_NONE)
-      # sentences = np.array([],np.string_)
-      # heads = np.array([],np.int32)
-      # labels = np.array([],np.int32)
       sentences = []
       heads = []
       labels = []
       first_chunk = chunk_data.get_chunk()
       chunk = pd.DataFrame(first_chunk)
-      # sentences = np.append(sentences,str(chunk.values[0,0]))
-      # heads = np.append(heads,chunk.values[0,1])
-      # labels = np.append(labels,chunk.values[0,2])
       sentences.append(str(chunk.values[0,0]))
       heads.append(int(chunk.values[0,1]))
       labels.append(chunk.values[0,2])
       for l in chunk_data:
           #if not np.isnan(l.iloc[0,0]):
           if not pd.isnull(l.iloc[0,0]):
-              # sentences = np.append(sentences, str(l.values[0, 0]))
-              # heads = np.append(heads, l.values[0, 1])
-              # labels = np.append(labels, l.values[0, 2])
               sentences.append(str(l.values[0, 0]))
               heads.append(int(l.values[0, 1]))
               labels.append(l.values[0, 2])
@@ -381,15 +372,9 @@ class MyDataset(IterableDataset):
           yield example
           first_chunk = next(chunk_data)
           chunk = pd.DataFrame(first_chunk)
-          # sentences = np.array([], np.string_)
-          # heads = np.array([], np.int32)
-          # labels = np.array([], np.int32)
           sentences = []
           heads = []
           labels = []
-          # sentences = np.append(sentences, str(chunk.values[0, 0]))
-          # heads = np.append(heads, chunk.values[0, 1])
-          # labels = np.append(labels, chunk.values[0, 2])
           sentences.append(str(chunk.values[0, 0]))
           heads.append(int(chunk.values[0, 1]))
           labels.append(chunk.values[0, 2])
@@ -401,67 +386,49 @@ class MyDataset(IterableDataset):
       example = self.custom_convert_examples_to_features(text_list=sentences, label_list=labels, head_list=heads)
       yield example
 
-  def __init__(self, file_path, tokenizer, label_path, max_seq_length = 256):
-    super(IterableDataset).__init__()
-    self.file_path = file_path
-    self.iterable = self.iter_chunk(self.file_path)
-    self.tokenizer = tokenizer
-    self.label_list = self.get_label_list(tokenizer,label_path)
-    self.label_map = {label: i for i, label in enumerate(self.label_list, 1)}
-    self.max_seq_length = max_seq_length
+    def __init__(self, file_path, tokenizer, label_path, max_seq_length = 256):
+        super(IterableDataset).__init__()
+        self.file_path = file_path
+        self.iterable = self.iter_chunk(self.file_path)
+        self.tokenizer = tokenizer
+        self.label_list = self.get_label_list(tokenizer,label_path)
+        self.label_map = {label: i for i, label in enumerate(self.label_list, 1)}
+        self.max_seq_length = max_seq_length
 
-  def __iter__(self):
-    return iter(self.iterable)
+    def __iter__(self):
+        return iter(self.iterable)
 
-
+from torch.nn.functional import pad
 def custom_collate(data, tokenizer):
-  # 0:  input_ids
-  # 1:  input_mask
-  # 2:  segment_ids
-  # 3:  head_idx
-  # 4:  labels_ids
-  # 5:  valid_ids
-  # 6:  lmask_ids
-  # 7:  eval_mask_ids
-  seq_pad_idx = [0,1,2,5]
-  label_pad_idx = [3,4,6,7]
-  add_token = [tokenizer.pad_token_id,0,0,-1,0,1,0,0]
-  seq_pad_len = 0
-  label_pad_len = 0
-  for col in seq_pad_idx:
-    seq_pad_len = max(seq_pad_len,max([len(item[col]) for item in data]))
-  for col in label_pad_idx:
-    label_pad_len = max(label_pad_len,max([len(item[col]) for item in data]))
-  for item in data:
-    for col in range(8):
-      if col in seq_pad_idx:
-        need = seq_pad_len - len(item[col])
-      else:
-        need = label_pad_len - len(item[col])
-      if need == 0:
-        continue
-      add = torch.full([need],add_token[col])
-      item[col] = torch.cat((item[col],add))
-  return data
+    # 0:  input_ids
+    # 1:  input_mask
+    # 2:  segment_ids
+    # 3:  head_idx
+    # 4:  labels_ids
+    # 5:  valid_ids
+    # 6:  lmask_ids
+    # 7:  eval_mask_ids
+    seq_pad_idx = [0,1,2,5]
+    label_pad_idx = [3,4,6,7]
+    add_token = [tokenizer.pad_token_id,0,0,-1,0,1,0,0]
+    seq_pad_len = 0
+    label_pad_len = 0
+    for col in seq_pad_idx:
+        seq_pad_len = max(seq_pad_len,max([len(item[col]) for item in data]))
+    for col in label_pad_idx:
+        label_pad_len = max(label_pad_len,max([len(item[col]) for item in data]))
 
-# def feature2input(self, device, feature):
-#     all_input_ids = torch.tensor([f.input_ids for f in feature], dtype=torch.long)
-#     all_input_mask = torch.tensor([f.input_mask for f in feature], dtype=torch.long)
-#     all_segment_ids = torch.tensor([f.segment_ids for f in feature], dtype=torch.long)
-#     all_head_idx = torch.tensor([f.head_idx for f in feature], dtype=torch.long)
-#     all_label_ids = torch.tensor([f.label_id for f in feature], dtype=torch.long)
-#     all_valid_ids = torch.tensor([f.valid_ids for f in feature], dtype=torch.long)
-#     all_lmask_ids = torch.tensor([f.label_mask for f in feature], dtype=torch.bool)
-#     all_eval_mask_ids = torch.tensor([f.eval_mask for f in feature], dtype=torch.bool)
-#     input_ids = all_input_ids.to(device)
-#     input_mask = all_input_mask.to(device)
-#     segment_ids = all_segment_ids.to(device)
-#     head_idx = all_head_idx.to(device)
-#     label_ids = all_label_ids.to(device)
-#     valid_ids = all_valid_ids.to(device)
-#     l_mask = all_lmask_ids.to(device)
-#     eval_mask = all_eval_mask_ids.to(device)
-#     ngram_ids = None
-#     ngram_positions = None
-#     return input_ids, input_mask, l_mask, eval_mask, head_idx, label_ids, \
-#            ngram_ids, ngram_positions, segment_ids, valid_ids,
+    for item in data:
+        for col in range(8):
+          if col in seq_pad_idx:
+            need = seq_pad_len - len(item[col])
+          else:
+            need = label_pad_len - len(item[col])
+          if need == 0:
+            continue
+          item[col] = pad(item[col],(0,need),value = add_token[col])
+          #add = torch.full([need],add_token[col])
+          #item[col] = torch.cat((item[col],add))
+
+    return data
+

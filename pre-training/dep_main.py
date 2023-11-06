@@ -1,3 +1,7 @@
+from custom_data_loader import MyDataset, custom_collate
+from transformers import AutoConfig, AutoModel, AutoTokenizer
+from torch.utils.data import Dataset, IterableDataset, DataLoader
+
 from __future__ import absolute_import, division, print_function
 
 import argparse
@@ -6,7 +10,7 @@ import logging
 import os
 import random
 import subprocess
-
+import csv
 import numpy as np
 import torch
 
@@ -17,7 +21,7 @@ from tqdm import tqdm
 from dep_helper import get_label_list
 from dep_model import DependencyParser
 import datetime
-
+from functools import partial
 import pandas as pd
 
 '''
@@ -53,28 +57,6 @@ def Get_data(chunk_data, max_seq = 38400):
   print("HIEN:",len(train_examples))
   return train_examples
 '''
-
-def Get_data(chunk_data, max_seq = 38400):
-  train_examples = []
-  sentence = []
-  head = []
-  label = []
-  for frame in chunk_data:
-    if frame.isnull().values.any():
-      if len(sentence) > 0:
-        train_examples.append((sentence,head,label))
-        sentence = []
-        head = []
-        label = []
-    else:
-      sentence.append(str(frame[1].values[0]))
-      head.append(frame[6].values[0])
-      label.append(frame[7].values[0])
-    if len(train_examples) == max_seq:
-      break
-  if len(sentence) > 0:
-    train_examples.append((sentence,head,label))
-  return train_examples
 
 
 def train(args):
@@ -216,54 +198,41 @@ def train(args):
     logger.info("Num Epochs = %d", args.num_train_epochs)
     logger.info("Batch size = %d", args.train_batch_size)
 
+    tokenizer = AutoTokenizer.from_pretrained(args.bert_model)
+
     for epoch in range(int(args.num_train_epochs)):
         #directory: args.train_data_path, store at 'files' list
         files =  [f for f in os.listdir(args.train_data_path) if os.path.isfile(args.train_data_path+'/'+f)]
         logger.info('Epoch %d start' % (epoch+1))
         for file_index, file in enumerate(files):
             logger.info(str(str(file_index)+' - '+file))
-            chunk_data = pd.read_csv(os.path.join(args.train_data_path, file),
-                             skip_blank_lines=False,
-                             iterator=True,
-                             chunksize=1,
-                             delimiter="\t",
-                             header=None,
-                             encoding='utf-8',
-                             error_bad_lines=False,
-                             engine='python',
-                             quoting=csv.QUOTE_NONE)
-            part_cnt = 0
-            while True:
-              #train_examples = Get_data(chunk_data,max_seq = 10**100)
-              #if len(train_examples) == 0:
-              #  break
-              #train_examples = dep_parser.to_example(train_examples)
-              train_examples = load_data(os.path.join(args.train_data_path, file))
-              #print(len(train_examples),len(train_examples_original))
-              #print(train_examples_original.shape)
-              #print(train_examples.shape)
-              part_cnt += 1
-              logger.info('Part '+str(part_cnt))
-              np.random.shuffle(train_examples)
-              dep_parser.train()
-              tr_loss = 0
-              nb_tr_examples, nb_tr_steps = 0, 0
-              with tqdm(total=int(len(train_examples) / args.train_batch_size),
+            #train_examples = load_data(os.path.join(args.train_data_path, file))
+            dataset = MyDataset(file_path=os.path.join(args.train_data_path, file),tokenizer=tokenizer,label_path=args.label_path)
+            loader = DataLoader(dataset,batch_size = 16, collate_fn=partial(custom_collate, tokenizer = tokenizer))
+            for train_examples in loader:
+                np.random.shuffle(train_examples)
+                dep_parser.train()
+                tr_loss = 0
+                nb_tr_examples, nb_tr_steps = 0, 0
+                with tqdm(total=int(len(train_examples) / args.train_batch_size),
                         disable=(args.rank not in [-1, 0] and args.world_size > 1)) as pbar:
                   for step, start_index in enumerate(range(0, len(train_examples), args.train_batch_size)):
                       dep_parser.train()
-                      batch_examples = train_examples[start_index: min(start_index +
-                                                                      args.train_batch_size, len(train_examples))]
-                      if len(batch_examples) == 0:
-                          continue
-                      train_features = convert_examples_to_features(batch_examples)
+                      # batch_examples = train_examples[start_index: min(start_index +
+                      #                                                 args.train_batch_size, len(train_examples))]
+                      # if len(batch_examples) == 0:
+                      #     continue
+                      # train_features = convert_examples_to_features(batch_examples)
 
-                      if len(train_features) == 0:
-                          continue
+                      # if len(train_features) == 0:
+                      #     continue
 
-                      input_ids, input_mask, l_mask, eval_mask, arcs, rels, ngram_ids, ngram_positions, \
-                      segment_ids, valid_ids = feature2input(device, train_features)
+                      # input_ids, input_mask, l_mask, eval_mask, arcs, rels, ngram_ids, ngram_positions, \
+                      # segment_ids, valid_ids = feature2input(device, train_features)
 
+
+
+                      loss = dep_parser()
                       loss = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask,
                                         ngram_ids, ngram_positions,
                                         arcs, rels)

@@ -1,4 +1,7 @@
+from custom_data_loader import MyDataset, custom_collate
+
 import json
+
 
 def get_word2id(train_data_path):
     word2id = {'<PAD>': 0}
