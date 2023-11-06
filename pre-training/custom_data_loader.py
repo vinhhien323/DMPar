@@ -413,10 +413,18 @@ def custom_collate(data, tokenizer):
     add_token = [tokenizer.pad_token_id,0,0,-1,0,1,0,0]
     seq_pad_len = 0
     label_pad_len = 0
-    for col in seq_pad_idx:
-        seq_pad_len = max(seq_pad_len,max([len(item[col]) for item in data]))
-    for col in label_pad_idx:
-        label_pad_len = max(label_pad_len,max([len(item[col]) for item in data]))
+
+    for item in data:
+        for col in range(8):
+            if col in seq_pad_idx:
+                seq_pad_len = max(seq_pad_len, len(item[col]))
+            else:
+                label_pad_len = max(label_pad_len, len(item[col]))
+
+    # for col in seq_pad_idx:
+    #     seq_pad_len = max(seq_pad_len,max([len(item[col]) for item in data]))
+    # for col in label_pad_idx:
+    #     label_pad_len = max(label_pad_len,max([len(item[col]) for item in data]))
 
     for item in data:
         for col in range(8):
