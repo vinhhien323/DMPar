@@ -13,7 +13,7 @@ import subprocess
 import csv
 import numpy as np
 import torch
-
+import copy
 from modules.optimization import BertAdam
 from modules.schedulers import LinearWarmUpScheduler
 
@@ -21,6 +21,7 @@ from tqdm import tqdm
 from dep_helper import get_label_list
 from dep_model import DependencyParser
 import datetime
+import time
 from functools import partial
 import pandas as pd
 
@@ -205,80 +206,69 @@ def train(args):
         files =  [f for f in os.listdir(args.train_data_path) if os.path.isfile(args.train_data_path+'/'+f)]
         logger.info('Epoch %d start' % (epoch+1))
         for file_index, file in enumerate(files):
-            logger.info(str(str(file_index)+' - '+file))
-            #train_examples = load_data(os.path.join(args.train_data_path, file))
+            time_start = time.time()
             dataset = MyDataset(file_path=os.path.join(args.train_data_path, file),tokenizer=tokenizer,label_path=args.label_path)
             loader = DataLoader(dataset,batch_size = 16, collate_fn=partial(custom_collate, tokenizer = tokenizer))
             for train_examples in loader:
-                np.random.shuffle(train_examples)
                 dep_parser.train()
                 tr_loss = 0
                 nb_tr_examples, nb_tr_steps = 0, 0
-                with tqdm(total=int(len(train_examples) / args.train_batch_size),
-                        disable=(args.rank not in [-1, 0] and args.world_size > 1)) as pbar:
-                  for step, start_index in enumerate(range(0, len(train_examples), args.train_batch_size)):
-                      dep_parser.train()
-                      # batch_examples = train_examples[start_index: min(start_index +
-                      #                                                 args.train_batch_size, len(train_examples))]
-                      # if len(batch_examples) == 0:
-                      #     continue
-                      # train_features = convert_examples_to_features(batch_examples)
+                dep_parser.train()
 
-                      # if len(train_features) == 0:
-                      #     continue
-
-                      # input_ids, input_mask, l_mask, eval_mask, arcs, rels, ngram_ids, ngram_positions, \
-                      # segment_ids, valid_ids = feature2input(device, train_features)
+                input_ids, input_mask, l_mask, eval_mask, arcs, rels, ngram_ids, ngram_positions, \
+                segment_ids, valid_ids = train_examples
 
 
 
-                      loss = dep_parser()
-                      loss = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask,
-                                        ngram_ids, ngram_positions,
-                                        arcs, rels)
+                loss = dep_parser()
+                loss = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask,
+                                    ngram_ids, ngram_positions,
+                                    arcs, rels)
 
-                      # if np.isnan(loss.to('cpu').detach().numpy()):
-                      #     raise ValueError('loss is nan!')
-                      if n_gpu > 1:
-                          loss = loss.mean()  # mean() to average on multi-gpu.
-                      if args.gradient_accumulation_steps > 1:
-                          loss = loss / args.gradient_accumulation_steps
+                # if np.isnan(loss.to('cpu').detach().numpy()):
+                #     raise ValueError('loss is nan!')
+                if n_gpu > 1:
+                      loss = loss.mean()  # mean() to average on multi-gpu.
+                if args.gradient_accumulation_steps > 1:
+                      loss = loss / args.gradient_accumulation_steps
 
+                if args.fp16:
+                      with amp.scale_loss(loss, optimizer) as scaled_loss:
+                          scaled_loss.backward()
+                else:
+                      loss.backward()
+
+                tr_loss += loss.item()
+                nb_tr_examples += input_ids.size(0)
+                nb_tr_steps += 1
+
+
+                if (step + 1) % args.gradient_accumulation_steps == 0:
                       if args.fp16:
-                          with amp.scale_loss(loss, optimizer) as scaled_loss:
-                              scaled_loss.backward()
-                      else:
-                          loss.backward()
+                          # modify learning rate with special warm up for BERT which FusedAdam doesn't do
+                          scheduler.step()
+                      optimizer.step()
+                      optimizer.zero_grad()
+                      global_step += 1
 
-                      tr_loss += loss.item()
-                      nb_tr_examples += input_ids.size(0)
-                      nb_tr_steps += 1
+                      if global_step % args.save_every_steps == 0 \
+                              and (args.local_rank == -1
+                                  or torch.distributed.get_rank() == 0
+                                  or args.world_size <= 1):
+                          current_step = global_step * args.world_size
 
-                      pbar.update(1)
+                          if not os.path.exists(output_model_dir):
+                              os.makedirs(output_model_dir)
 
-                      if (step + 1) % args.gradient_accumulation_steps == 0:
-                          if args.fp16:
-                              # modify learning rate with special warm up for BERT which FusedAdam doesn't do
-                              scheduler.step()
-                          optimizer.step()
-                          optimizer.zero_grad()
-                          global_step += 1
+                          # model_to_save = dep_parser.module if hasattr(dep_parser, 'module') else dep_parser
+                          step_model_dir = os.path.join(output_model_dir, 'step_%08d' % current_step)
+                          if not os.path.exists(step_model_dir):
+                              os.mkdir(step_model_dir)
 
-                          if global_step % args.save_every_steps == 0 \
-                                  and (args.local_rank == -1
-                                      or torch.distributed.get_rank() == 0
-                                      or args.world_size <= 1):
-                              current_step = global_step * args.world_size
+                          save_model(step_model_dir, args.bert_model, optimizer)
+            time_end = time.time()
+            logger.info(str(str(file_index) + ' - ' + file + ' has finished after ' + str(time_end-time_start) + ' seconds.'))
 
-                              if not os.path.exists(output_model_dir):
-                                  os.makedirs(output_model_dir)
-
-                              # model_to_save = dep_parser.module if hasattr(dep_parser, 'module') else dep_parser
-                              step_model_dir = os.path.join(output_model_dir, 'step_%08d' % current_step)
-                              if not os.path.exists(step_model_dir):
-                                  os.mkdir(step_model_dir)
-
-                              save_model(step_model_dir, args.bert_model, optimizer)
 
 
 def main():

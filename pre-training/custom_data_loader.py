@@ -399,7 +399,7 @@ class MyDataset(IterableDataset):
         return iter(self.iterable)
 
 from torch.nn.functional import pad
-def custom_collate(data, tokenizer):
+def custom_collate(data, tokenizer, device = None):
     # 0:  input_ids
     # 1:  input_mask
     # 2:  segment_ids
@@ -414,17 +414,10 @@ def custom_collate(data, tokenizer):
     seq_pad_len = 0
     label_pad_len = 0
 
-    for item in data:
-        for col in range(8):
-            if col in seq_pad_idx:
-                seq_pad_len = max(seq_pad_len, len(item[col]))
-            else:
-                label_pad_len = max(label_pad_len, len(item[col]))
-
-    # for col in seq_pad_idx:
-    #     seq_pad_len = max(seq_pad_len,max([len(item[col]) for item in data]))
-    # for col in label_pad_idx:
-    #     label_pad_len = max(label_pad_len,max([len(item[col]) for item in data]))
+    for col in seq_pad_idx:
+        seq_pad_len = max(seq_pad_len,max([len(item[col]) for item in data]))
+    for col in label_pad_idx:
+        label_pad_len = max(label_pad_len,max([len(item[col]) for item in data]))
 
     for item in data:
         for col in range(8):
@@ -438,5 +431,27 @@ def custom_collate(data, tokenizer):
           #add = torch.full([need],add_token[col])
           #item[col] = torch.cat((item[col],add))
 
-    return data
+    all_input_ids = torch.tensor([item[0] for item in data], dtype=torch.long)
+    all_input_mask = torch.tensor([item[1] for item in data], dtype=torch.long)
+    all_segment_ids = torch.tensor([item[2] for item in data], dtype=torch.long)
+    all_head_idx = torch.tensor([item[3] for item in data], dtype=torch.long)
+    all_label_ids = torch.tensor([item[4] for item in data], dtype=torch.long)
+    all_valid_ids = torch.tensor([item[5] for item in data], dtype=torch.long)
+    all_lmask_ids = torch.tensor([item[6] for item in data], dtype=torch.bool)
+    all_eval_mask_ids = torch.tensor([item[7] for item in data], dtype=torch.bool)
+
+    input_ids = all_input_ids.to(device)
+    input_mask = all_input_mask.to(device)
+    segment_ids = all_segment_ids.to(device)
+    head_idx = all_head_idx.to(device)
+    label_ids = all_label_ids.to(device)
+    valid_ids = all_valid_ids.to(device)
+    l_mask = all_lmask_ids.to(device)
+    eval_mask = all_eval_mask_ids.to(device)
+
+    ngram_ids = None
+    ngram_positions = None
+    return input_ids, input_mask, l_mask, eval_mask, head_idx, label_ids, \
+        ngram_ids, ngram_positions, segment_ids, valid_ids,
+
 
