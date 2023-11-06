@@ -1,6 +1,3 @@
-from custom_data_loader import MyDataset, custom_collate
-
-
 from __future__ import absolute_import, division, print_function
 
 import copy
@@ -20,6 +17,7 @@ import subprocess
 import os
 from dep_helper import load_json, save_json
 
+from custom_data_loader import MyDataset, custom_collate
 
 DEFAULT_HPARA = {
     'max_seq_length': 128,

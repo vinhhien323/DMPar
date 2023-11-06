@@ -1,7 +1,3 @@
-from custom_data_loader import MyDataset, custom_collate
-from transformers import AutoConfig, AutoModel, AutoTokenizer
-from torch.utils.data import Dataset, IterableDataset, DataLoader
-
 from __future__ import absolute_import, division, print_function
 
 import argparse
@@ -23,7 +19,11 @@ from dep_model import DependencyParser
 import datetime
 import time
 from functools import partial
-import pandas as pd
+
+from custom_data_loader import MyDataset, custom_collate
+from transformers import AutoConfig, AutoModel, AutoTokenizer
+from torch.utils.data import Dataset, IterableDataset, DataLoader
+
 
 '''
 def Get_data(chunk_data, max_seq = 38400):
