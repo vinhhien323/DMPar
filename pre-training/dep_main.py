@@ -209,7 +209,7 @@ def train(args):
         for file_index, file in enumerate(files):
             time_start = time.time()
             dataset = MyDataset(file_path=os.path.join(args.train_data_path, file),tokenizer=tokenizer,label_path=args.label_path)
-            loader = DataLoader(dataset,batch_size = 16, collate_fn=partial(custom_collate, tokenizer = tokenizer, device = device))
+            loader = DataLoader(dataset,batch_size = args.train_batch_size, collate_fn=partial(custom_collate, tokenizer = tokenizer, device = device))
             dep_parser.train()
             tr_loss = 0
             nb_tr_examples, nb_tr_steps = 0, 0
