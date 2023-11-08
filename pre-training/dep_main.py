@@ -20,7 +20,7 @@ import datetime
 import time
 from functools import partial
 
-from custom_data_loader import MyDataset, custom_collate
+from polars_data_loader import MyDataset, custom_collate
 from transformers import AutoConfig, AutoModel, AutoTokenizer
 from torch.utils.data import Dataset, IterableDataset, DataLoader
 

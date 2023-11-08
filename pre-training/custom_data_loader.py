@@ -366,8 +366,6 @@ class MyDataset(IterableDataset):
               heads.append(int(l.values[0, 1]))
               labels.append(l.values[0, 2])
               continue
-          #splitted_data = (sentences,heads,labels)
-          #processed_data = self.process_data(lines = [splitted_data])
           example = self.custom_convert_examples_to_features(text_list= sentences, label_list=labels, head_list= heads)
           yield example
           sentences = []
@@ -383,10 +381,6 @@ class MyDataset(IterableDataset):
           heads.append(int(chunk.values[0, 1]))
           labels.append(chunk.values[0, 2])
           continue
-      #splitted_data = (sentences,heads,labels)
-      #processed_data = self.process_data(lines = [splitted_data])
-      #example = self.convert_examples_to_features(examples = processed_data)
-      #yield example[0]
       if len(sentences) > 0:
         example = self.custom_convert_examples_to_features(text_list=sentences, label_list=labels, head_list=heads)
         yield example
