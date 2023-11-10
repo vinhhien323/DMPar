@@ -70,14 +70,6 @@ class MyDataset(Dataset):
         input_ids = self.tokenizer.convert_tokens_to_ids(ntokens)
         input_mask = [1] * len(input_ids)
 
-        eval_mask = copy.deepcopy(label_mask)
-        eval_mask[0] = 0
-        # ignore all punctuation if not specified
-        for idx in punctuation_idx:
-            if idx < len(eval_mask):
-                eval_mask[idx] = 0
-
-
         input_ids = torch.tensor(input_ids, dtype=torch.long)
         input_mask = torch.tensor(input_mask, dtype=torch.long)
         segment_ids = torch.tensor(segment_ids, dtype=torch.long)
@@ -85,11 +77,8 @@ class MyDataset(Dataset):
         label_ids = torch.tensor(label_ids, dtype=torch.long)
         valid_ids = torch.tensor(valid, dtype=torch.long)
         lmask_ids = torch.tensor(label_mask, dtype=torch.bool)
-        eval_mask_ids = torch.tensor(eval_mask, dtype=torch.bool)
 
-
-        return [input_ids, input_mask, segment_ids, head_idx, label_ids, valid_ids, lmask_ids, eval_mask_ids]
-
+        return [input_ids, input_mask, segment_ids, head_idx, label_ids, valid_ids, lmask_ids]
 
     def get_label_list(self, tokenizer, label_path):
       label_list = [tokenizer.unk_token]
@@ -129,7 +118,7 @@ class MyDataset(Dataset):
 from torch.nn.functional import pad
 
 
-def custom_collate(data, tokenizer, device=None):
+def custom_collate(data, tokenizer):
     np.random.shuffle(data)
 
     # 0:  input_ids
@@ -142,7 +131,7 @@ def custom_collate(data, tokenizer, device=None):
     # 7:  eval_mask_ids
 
     seq_pad_idx = [0, 1, 2, 5]
-    label_pad_idx = [3, 4, 6, 7]
+    label_pad_idx = [3, 4, 6]
     add_token = [tokenizer.pad_token_id, 0, 0, -1, 0, 1, 0, 0]
     seq_pad_len = 0
     label_pad_len = 0
@@ -175,31 +164,9 @@ def custom_collate(data, tokenizer, device=None):
     all_label_ids = torch.stack([pad(item[4], (0, label_pad_len - len(item[4])), value=add_token[4]) for item in data])
     all_valid_ids = torch.stack([pad(item[5], (0, seq_pad_len - len(item[5])), value=add_token[5]) for item in data])
     all_lmask_ids = torch.stack([pad(item[6], (0, label_pad_len - len(item[6])), value=add_token[6]) for item in data])
-    all_eval_mask_ids = torch.stack(
-        [pad(item[7], (0, label_pad_len - len(item[7])), value=add_token[7]) for item in data])
-
-
-    if device is not None:
-        input_ids = all_input_ids.to(device)
-        input_mask = all_input_mask.to(device)
-        segment_ids = all_segment_ids.to(device)
-        head_idx = all_head_idx.to(device)
-        label_ids = all_label_ids.to(device)
-        valid_ids = all_valid_ids.to(device)
-        l_mask = all_lmask_ids.to(device)
-        eval_mask = all_eval_mask_ids.to(device)
-    else:
-        input_ids = all_input_ids
-        input_mask = all_input_mask
-        segment_ids = all_segment_ids
-        head_idx = all_head_idx
-        label_ids = all_label_ids
-        valid_ids = all_valid_ids
-        l_mask = all_lmask_ids
-        eval_mask = all_eval_mask_ids
 
     ngram_ids = None
     ngram_positions = None
 
-    return input_ids, input_mask, l_mask, eval_mask, head_idx, label_ids, ngram_ids, ngram_positions, segment_ids, valid_ids
+    return all_input_ids, all_input_mask, all_lmask_ids, all_head_idx, all_label_ids, ngram_ids, ngram_positions, all_segment_ids, all_valid_ids
 

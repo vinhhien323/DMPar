@@ -209,15 +209,24 @@ def train(args):
         for file_index, file in enumerate(files):
             time_start = time.time()
             dataset = MyDataset(file_path=os.path.join(args.train_data_path, file),tokenizer=tokenizer,label_path=args.label_path)
-            loader = DataLoader(dataset,batch_size = args.train_batch_size, collate_fn=partial(custom_collate, tokenizer = tokenizer, device = device))
+            loader = DataLoader(dataset,batch_size = args.train_batch_size, collate_fn=partial(custom_collate, tokenizer = tokenizer))
             dep_parser.train()
             tr_loss = 0
             nb_tr_examples, nb_tr_steps = 0, 0
             for step, train_examples in enumerate(loader):
                 dep_parser.train()
 
-                input_ids, input_mask, l_mask, eval_mask, arcs, rels, ngram_ids, ngram_positions, \
+                input_ids, input_mask, l_mask, arcs, rels, ngram_ids, ngram_positions, \
                 segment_ids, valid_ids = train_examples
+
+                ###To device
+                input_ids = input_ids.to(device)
+                input_mask = input_mask.to(device)
+                l_mask = l_mask.to(device)
+                arcs = arcs.to(device)
+                rels = rels.to(device)
+                segment_ids = segment_ids.to(device)
+                valid_ids = valid_ids.to(device)
 
                 loss = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask,
                                     ngram_ids, ngram_positions,
