@@ -191,8 +191,7 @@ def train(args):
                 segment_ids, valid_ids = feature2input(device, train_features)
 
                 arc_scores, rel_scores = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask, word_ids,
-                                                    pos_ids,
-                                                    ngram_ids, ngram_positions)
+                                                    pos_ids, ngram_ids, ngram_positions)
                 l_mask[:, 0] = 0
                 loss = get_loss(arc_scores, rel_scores, arcs, rels, l_mask)
 

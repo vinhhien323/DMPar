@@ -448,13 +448,13 @@ class DependencyParser(nn.Module):
             label_ids = []
             head_idx = []
 
-            ntokens.append("[CLS]")
+            ntokens.append(self.tokenizer.cls_token)
             segment_ids.append(0)
 
             valid.insert(0, 1)
             label_mask.insert(0, 1)
             head_idx.append(-1)
-            label_ids.append(self.labelmap["[CLS]"])
+            label_ids.append(self.labelmap[self.tokenizer.cls_token])
             for i, token in enumerate(tokens):
                 ntokens.append(token)
                 segment_ids.append(0)
@@ -462,9 +462,9 @@ class DependencyParser(nn.Module):
                 if labels[i] in self.labelmap:
                     label_ids.append(self.labelmap[labels[i]])
                 else:
-                    label_ids.append(self.labelmap['<UNK>'])
+                    label_ids.append(self.labelmap[self.tokenizer.unk_token])
                 head_idx.append(head_idxs[i])
-            ntokens.append("[SEP]")
+            ntokens.append(self.tokenizer.sep_token)
 
             segment_ids.append(0)
             valid.append(1)
@@ -489,12 +489,12 @@ class DependencyParser(nn.Module):
                     eval_mask[idx] = 0
 
             if self.pos_embedding is not None:
-                pos_ids = [self.pos2id['[CLS]']]
+                pos_ids = [self.pos2id[self.tokenizer.cls_token]]
                 for i in range(len(pos)):
                     if pos[i] in self.pos2id:
                         pos_ids.append(self.pos2id[pos[i]])
                     else:
-                        pos_ids.append(self.pos2id['<UNK>'])
+                        pos_ids.append(self.pos2id[self.tokenizer.unk_token])
                 while len(pos_ids) < label_pad_length:
                     pos_ids.append(0)
                 assert len(pos_ids) == label_pad_length
