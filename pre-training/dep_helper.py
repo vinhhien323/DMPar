@@ -1,6 +1,7 @@
 from custom_data_loader import MyDataset, custom_collate
 
 import json
+from transformers import AutoConfig, AutoModel, AutoTokenizer
 
 
 def get_word2id(train_data_path):
@@ -20,9 +21,11 @@ def get_word2id(train_data_path):
     return word2id
 
 
-def get_label_list(label_path):
-    label_list = ['<UNK>']
+def get_label_list(tokenizer_name, label_path):
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    #label_list = ['<UNK>']
 
+    label_list = [tokenizer.cls_token, tokenizer.pad_token, tokenizer.sep_token, tokenizer.unk_token]
     with open(label_path, 'r', encoding='utf8') as f:
         lines = f.readlines()
         for line in lines:
@@ -33,7 +36,7 @@ def get_label_list(label_path):
 
     assert 'amod' in label_list
 
-    label_list.extend(['[CLS]', '[SEP]'])
+    #label_list.extend(['[CLS]', '[SEP]'])
     return label_list
 
 

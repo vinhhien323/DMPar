@@ -24,42 +24,6 @@ from polars_data_loader import MyDataset, custom_collate
 from transformers import AutoConfig, AutoModel, AutoTokenizer
 from torch.utils.data import Dataset, IterableDataset, DataLoader
 
-
-'''
-def Get_data(chunk_data, max_seq = 38400):
-  train_examples = []
-  sentence = []
-  head = []
-  label = []
-  cnt = 0
-  while len(train_examples) < max_seq:
-    cnt += 1
-    try:
-      frame = chunk_data.get_chunk()
-    except:
-      if len(sentence) > 0:
-        train_examples.append((sentence,head,label))
-        sentence = []
-        head = []
-        label = []
-      print('Stopped at', cnt)
-      print(frame)
-      break
-    if frame.isnull().values.any():
-      if len(sentence) > 0:
-        train_examples.append((sentence,head,label))
-        sentence = []
-        head = []
-        label = []
-    else:
-      sentence.append(frame[1].values[0])
-      head.append(frame[6].values[0])
-      label.append(frame[7].values[0])
-  print("HIEN:",len(train_examples))
-  return train_examples
-'''
-
-
 def train(args):
 
     if not os.path.exists('./logs'):
@@ -117,7 +81,7 @@ def train(args):
         raise Warning('model name is not specified, the model will NOT be saved!')
     output_model_dir = os.path.join('./models', args.model_name + '_' + now_time)
 
-    label_list = get_label_list(args.label_path)
+    label_list = get_label_list(tokenizer_name= args.bert_model, label_path = args.label_path)
     logger.info('# of tag types in train: %d: ' % (len(label_list) - 3))
     label_map = {label: i for i, label in enumerate(label_list, 1)}
     hpara = DependencyParser.init_hyper_parameters(args)
@@ -203,21 +167,20 @@ def train(args):
 
     for epoch in range(int(args.num_train_epochs)):
         #directory: args.train_data_path, store at 'files' list
-        files =  [f for f in os.listdir(args.train_data_path) if os.path.isfile(args.train_data_path+'/'+f)]
+        files = [f for f in os.listdir(args.train_data_path) if os.path.isfile(args.train_data_path+'/'+f)]
         np.random.shuffle(files)
         logger.info('Epoch %d start' % (epoch+1))
         for file_index, file in enumerate(files):
             time_start = time.time()
-            dataset = MyDataset(file_path=os.path.join(args.train_data_path, file),tokenizer=tokenizer,label_path=args.label_path)
-            loader = DataLoader(dataset,batch_size = args.train_batch_size, collate_fn=partial(custom_collate, tokenizer = tokenizer))
+            dataset = MyDataset(file_path=os.path.join(args.train_data_path, file), tokenizer=tokenizer, label_path=args.label_path)
+            loader = DataLoader(dataset, batch_size=args.train_batch_size, collate_fn=partial(custom_collate, tokenizer=tokenizer))
             dep_parser.train()
             tr_loss = 0
             nb_tr_examples, nb_tr_steps = 0, 0
             for step, train_examples in enumerate(loader):
                 dep_parser.train()
 
-                input_ids, input_mask, l_mask, arcs, rels, ngram_ids, ngram_positions, \
-                segment_ids, valid_ids = train_examples
+                input_ids, input_mask, l_mask, arcs, rels, ngram_ids, ngram_positions, segment_ids, valid_ids = train_examples
 
                 ###To device
                 input_ids = input_ids.to(device)
@@ -228,9 +191,7 @@ def train(args):
                 segment_ids = segment_ids.to(device)
                 valid_ids = valid_ids.to(device)
 
-                loss = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask,
-                                    ngram_ids, ngram_positions,
-                                    arcs, rels)
+                loss = dep_parser(input_ids, segment_ids, input_mask, valid_ids, l_mask, ngram_ids, ngram_positions, arcs, rels)
 
                 # if np.isnan(loss.to('cpu').detach().numpy()):
                 #     raise ValueError('loss is nan!')

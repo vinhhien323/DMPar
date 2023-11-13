@@ -81,8 +81,8 @@ class MyDataset(Dataset):
         return [input_ids, input_mask, segment_ids, head_idx, label_ids, valid_ids, lmask_ids]
 
     def get_label_list(self, tokenizer, label_path):
-      label_list = [tokenizer.unk_token]
-
+      #label_list = [tokenizer.unk_token]
+      label_list = [tokenizer.cls_token, tokenizer.pad_token, tokenizer.sep_token, tokenizer.unk_token]
       with open(label_path, 'r', encoding='utf8') as f:
           lines = f.readlines()
           for line in lines:
@@ -93,7 +93,7 @@ class MyDataset(Dataset):
 
       assert 'amod' in label_list
 
-      label_list.extend([tokenizer.cls_token, tokenizer.sep_token])
+      #label_list.extend([tokenizer.cls_token, tokenizer.sep_token])
       return label_list
 
     def __init__(self, file_path, tokenizer, label_path, max_seq_length = 256):
