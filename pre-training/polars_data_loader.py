@@ -96,12 +96,12 @@ class MyDataset(Dataset):
       #label_list.extend([tokenizer.cls_token, tokenizer.sep_token])
       return label_list
 
-    def __init__(self, file_path, tokenizer, label_path, max_seq_length = 256):
+    def __init__(self, file_path, tokenizer, label_path, max_seq_length = 258):
         self.file_path = file_path
         self.data = polars.read_csv(source=file_path, has_header = False, separator = '\t', quote_char = None)
         self.tokenizer = tokenizer
         self.label_list = self.get_label_list(tokenizer,label_path)
-        self.label_map = {label: i for i, label in enumerate(self.label_list, 1)}
+        self.label_map = {label: i for i, label in enumerate(self.label_list, 0)}
         self.max_seq_length = max_seq_length
 
     def __len__(self):

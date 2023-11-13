@@ -83,7 +83,7 @@ def train(args):
 
     label_list = get_label_list(tokenizer_name= args.bert_model, label_path = args.label_path)
     logger.info('# of tag types in train: %d: ' % (len(label_list) - 3))
-    label_map = {label: i for i, label in enumerate(label_list, 1)}
+    label_map = {label: i for i, label in enumerate(label_list, 0)}
     hpara = DependencyParser.init_hyper_parameters(args)
     print('Test:',label_map)
     dep_parser = DependencyParser(label_map, hpara, args.bert_model, from_pretrained=True)
