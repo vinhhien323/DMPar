@@ -170,6 +170,7 @@ def train(args):
         files = [f for f in os.listdir(args.train_data_path) if os.path.isfile(args.train_data_path+'/'+f)]
         np.random.shuffle(files)
         logger.info('Epoch %d start' % (epoch+1))
+        step = 0
         for file_index, file in enumerate(files):
             time_start = time.time()
             dataset = MyDataset(file_path=os.path.join(args.train_data_path, file), tokenizer=tokenizer, label_path=args.label_path)
@@ -177,7 +178,8 @@ def train(args):
             dep_parser.train()
             tr_loss = 0
             nb_tr_examples, nb_tr_steps = 0, 0
-            for step, train_examples in enumerate(loader):
+            for train_examples in loader:
+                step += 1
                 dep_parser.train()
 
                 input_ids, input_mask, l_mask, arcs, rels, ngram_ids, ngram_positions, segment_ids, valid_ids = train_examples
