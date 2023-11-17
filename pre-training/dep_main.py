@@ -174,7 +174,7 @@ def train(args):
         for file_index, file in enumerate(files):
             time_start = time.time()
             dataset = MyDataset(file_path=os.path.join(args.train_data_path, file), tokenizer=tokenizer, label_path=args.label_path)
-            loader = DataLoader(dataset, batch_size=args.train_batch_size, num_workers = 4, collate_fn=partial(custom_collate, tokenizer=tokenizer))
+            loader = DataLoader(dataset, batch_size=args.train_batch_size, num_workers = args.num_workers, collate_fn=partial(custom_collate, tokenizer=tokenizer))
             dep_parser.train()
             tr_loss = 0
             nb_tr_examples, nb_tr_steps = 0, 0
@@ -334,6 +334,8 @@ def main():
     parser.add_argument("--continue_train", action='store_true')
 
     parser.add_argument("--vanilla", action='store_true')
+
+    parser.add_argument("--num_workers", type=int, default=1)
     ##################
     args = parser.parse_args()
 
