@@ -472,8 +472,8 @@ class DependencyParser(nn.Module):
             input_ids = self.tokenizer.convert_tokens_to_ids(ntokens)
             input_mask = [1] * len(input_ids)
             while len(input_ids) < seq_pad_length:
-                input_ids.append(0)
-                input_mask.append(64000)
+                input_ids.append(self.tokenizer.mask_token_id)
+                input_mask.append(0)
                 segment_ids.append(0)
                 valid.append(1)
             while len(label_ids) < label_pad_length:
