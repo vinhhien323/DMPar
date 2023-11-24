@@ -473,7 +473,7 @@ class DependencyParser(nn.Module):
             input_mask = [1] * len(input_ids)
             while len(input_ids) < seq_pad_length:
                 input_ids.append(0)
-                input_mask.append(0)
+                input_mask.append(64000)
                 segment_ids.append(0)
                 valid.append(1)
             while len(label_ids) < label_pad_length:

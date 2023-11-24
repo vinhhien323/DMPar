@@ -41,7 +41,7 @@ def get_word2id(train_data_path, do_lower_case=False, freq_threshold=2):
 
 
 def get_label_list(train_data_path):
-    label_list = ['<unk>','<s>', '</s>']
+    label_list = ['<s>', '<pad>', '</s>', '<unk>']
 
     with open(train_data_path, 'r', encoding='utf8') as f:
         lines = f.readlines()
@@ -54,7 +54,7 @@ def get_label_list(train_data_path):
             if dep not in label_list:
                 label_list.append(dep)
 
-    #label_list.extend(['<s>', '</s>'])
+    label_list.extend(['<mask>'])
     return label_list
 
 
