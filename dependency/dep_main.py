@@ -167,6 +167,9 @@ def train(args):
 
     global_step = 0
 
+    if args.continue_train:
+        optimizer.load_state_dict(torch.load(os.path.join(args.bert_model, 'optimizer.bin')))
+
     if args.do_train:
         logger.info("***** Running training *****")
         logger.info("  Num examples = %d", len(train_examples))
@@ -531,7 +534,7 @@ def main():
     parser.add_argument('--mlp_dropout', type=float, default=0.33, help='')
     parser.add_argument('--n_mlp_arc', type=int, default=500, help='')
     parser.add_argument('--n_mlp_rel', type=int, default=100, help='')
-
+    parser.add_argument("--continue_train", action='store_true')
     parser.add_argument("--use_biaffine", action='store_true')
     parser.add_argument("--dep_model", default=None, type=str,
                         help="")
