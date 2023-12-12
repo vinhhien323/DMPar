@@ -472,7 +472,7 @@ class DependencyParser(nn.Module):
             input_ids = self.tokenizer.convert_tokens_to_ids(ntokens)
             input_mask = [1] * len(input_ids)
             while len(input_ids) < seq_pad_length:
-                input_ids.append(self.tokenizer.mask_token_id)
+                input_ids.append(self.tokenizer.pad_token_id)
                 input_mask.append(0)
                 segment_ids.append(0)
                 valid.append(1)
@@ -550,7 +550,7 @@ class DependencyParser(nn.Module):
                     ngram_positions_matrix[ngram_positions[i]:ngram_positions[i] + ngram_lengths[i], i] = 1.0
 
                 # Zero-pad up to the max ngram in seq length.
-                padding = [0] * (self.zen_ngram_dict.max_ngram_in_seq - len(ngram_ids))
+                padding = [self.tokenizer.pad_token_id] * (self.zen_ngram_dict.max_ngram_in_seq - len(ngram_ids))
                 ngram_ids += padding
                 ngram_lengths += padding
                 ngram_seg_ids += padding
